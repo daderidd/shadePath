@@ -40,10 +40,9 @@ const D: Record<string, Entry> = {
   lvl_mod: { fr: "Modérée", en: "Moderate" },
   lvl_high: { fr: "Élevée", en: "High" },
   lvl_sev: { fr: "Sévère", en: "Severe" },
-  hero_ab: {
-    fr: "🌳 L'itinéraire frais est <b>{0} °C plus frais</b> et <b>+{1}% sous les arbres</b> — pour {2}.",
-    en: "🌳 The cool route is <b>{0} °C cooler</b> and <b>+{1}% under trees</b> — for {2}.",
-  },
+  hero_heat: { fr: "<b>{0}% moins exposé à la chaleur</b>", en: "<b>{0}% less heat exposure</b>" },
+  hero_shade_more: { fr: "<b>+{0}% sous les arbres</b>", en: "<b>+{0}% under trees</b>" },
+  hero_for: { fr: "pour {0}", en: "for {0}" },
   extra_none: { fr: "aucun détour", en: "no detour" },
   hero_loop: {
     fr: "⟳ Boucle de <b>{0} km</b> · <b>{1}% sous les arbres</b> · la plus ombragée trouvée à cette distance. Touchez encore pour une autre.",

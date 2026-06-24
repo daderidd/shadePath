@@ -228,13 +228,20 @@ function updateStats(c: RouteResult, f: RouteResult, isLoop = false) {
     return;
   }
   if (state.s > 0 && f.distance > 0) {
-    const dPet = f.avgPet - c.avgPet;       // positive = cooler than fastest
-    const dShade = c.shadePct - f.shadePct; // positive = more shade
+    // Percentage reduction in relative heat EXPOSURE vs the fastest route (no fake
+    // °C anchor): exposure = normalised PET within the city's heat band.
+    const norm = (pet: number) => Math.min(1, Math.max(0, (pet - m.petLo) / (m.petHi - m.petLo)));
+    const nf = norm(f.avgPet), nc = norm(c.avgPet);
+    const pctCooler = nf > 0.06 ? Math.round(((nf - nc) / nf) * 100) : 0;
+    const dShade = Math.round(c.shadePct - f.shadePct);
     const dDist = c.distance - f.distance;
-    if (dPet >= 0.3 || dShade >= 3) {
+    const parts: string[] = [];
+    if (pctCooler >= 5) parts.push(t("hero_heat", pctCooler));
+    if (dShade >= 3) parts.push(t("hero_shade_more", dShade));
+    if (parts.length) {
       hero.classList.remove("hidden");
       const extra = dDist > 20 ? `+${dDist >= 1000 ? (dDist / 1000).toFixed(1) + " km" : Math.round(dDist) + " m"}` : t("extra_none");
-      hero.innerHTML = t("hero_ab", dPet.toFixed(1), Math.max(0, dShade).toFixed(0), extra);
+      hero.innerHTML = `🌳 ${parts.join(" · ")} — ${t("hero_for", extra)}`;
     } else { hero.classList.add("hidden"); }
   } else { hero.classList.add("hidden"); }
 }
