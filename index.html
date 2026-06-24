@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>shadePath — du côté frais de Genève</title>
+  <meta name="description" content="Planifiez un trajet à vélo ou à pied dans Genève qui évite la chaleur et reste sous les arbres." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌳</text></svg>" />
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="legend" aria-hidden="true">
+    <span class="legend-title" data-i18n="legend_title">Chaleur à 14h</span>
+    <div class="legend-bar"></div>
+    <div class="legend-scale"><span id="legend-lo">–</span><span data-i18n="legend_scale">frais · chaud</span><span id="legend-hi">–</span></div>
+  </div>
+
+  <section id="panel" aria-label="Contrôles d'itinéraire">
+    <div class="lang" role="tablist" aria-label="Language">
+      <button id="lang-fr" class="lang-btn active">FR</button>
+      <button id="lang-en" class="lang-btn">EN</button>
+    </div>
+
+    <header class="brand">
+      <h1>shade<span>path</span></h1>
+      <p class="tag"><span data-i18n="tagline">restez du côté frais de Genève</span> · <span class="hot">🔥</span><span class="cool">🌳</span></p>
+      <div id="conditions" class="conditions hidden"></div>
+    </header>
+
+    <div class="modes" role="tablist" aria-label="Mode">
+      <button id="mode-bike" class="mode active" role="tab" data-i18n="mode_bike">🚲 Vélo</button>
+      <button id="mode-walk" class="mode" role="tab" data-i18n="mode_walk">🚶 Marche</button>
+    </div>
+
+    <div class="trip" role="tablist" aria-label="Type de trajet">
+      <button id="trip-ab" class="trip-btn active" role="tab" data-i18n="trip_ab">A → B</button>
+      <button id="trip-loop" class="trip-btn" role="tab" data-i18n="trip_loop">⟳ Boucle ombragée</button>
+    </div>
+
+    <div class="field">
+      <label id="from-label" data-i18n="lbl_from">Départ</label>
+      <div class="search"><span class="pin a">A</span>
+        <input id="from" type="text" data-i18n-ph="ph_search" autocomplete="off" />
+        <ul id="from-sug" class="sug"></ul>
+      </div>
+    </div>
+    <div id="pp-fields">
+      <div class="field">
+        <label data-i18n="lbl_to">Arrivée</label>
+        <div class="search"><span class="pin b">B</span>
+          <input id="to" type="text" data-i18n-ph="ph_search" autocomplete="off" />
+          <ul id="to-sug" class="sug"></ul>
+        </div>
+      </div>
+      <button id="swap" class="swap" data-i18n="swap">⇅ inverser</button>
+    </div>
+
+    <div id="loop-ctrl" class="loop-ctrl hidden">
+      <div class="slider-labels"><span data-i18n="loop_dist">Distance de la boucle</span><span id="loop-dist-val">10 km</span></div>
+      <input id="loop-dist" type="range" min="5" max="45" step="1" value="10" />
+      <button id="loop-go" class="loop-go" data-i18n="loop_go">⟳ Trouver la boucle la plus ombragée</button>
+    </div>
+
+    <div class="slider-wrap">
+      <div class="slider-labels"><span data-i18n="sl_fast">⚡ Rapide</span><span data-i18n="sl_cool">Frais 🌳</span></div>
+      <input id="cool" type="range" min="0" max="100" value="65" />
+    </div>
+
+    <div id="stats" class="stats hidden">
+      <div class="stat"><b id="st-dist">–</b><span data-i18n="st_distance">distance</span></div>
+      <div class="stat"><b id="st-time">–</b><span data-i18n="st_time">durée</span></div>
+      <div class="stat"><b id="st-pet" title="">–</b><span data-i18n="st_exposure">exposition</span></div>
+      <div class="stat"><b id="st-shade">–</b><span data-i18n="st_trees">sous les arbres</span></div>
+    </div>
+    <div id="hero" class="hero hidden"></div>
+    <div id="msg" class="msg"></div>
+
+    <details class="layers">
+      <summary data-i18n="layers">Calques de la carte</summary>
+      <label><input type="checkbox" id="ly-heat" checked /> <span data-i18n="ly_heat">🔥 Chaleur (PET, 14h jour chaud)</span></label>
+      <label><input type="checkbox" id="ly-shade" /> <span data-i18n="ly_shade">🌳 Canopée arborée</span></label>
+      <label><input type="checkbox" id="ly-fount" checked /> <span data-i18n="ly_fount">💧 Fontaines</span></label>
+    </details>
+
+    <footer class="credit">
+      <span class="caveat" data-i18n-html="caveat"></span>
+      <span data-i18n-html="credit"></span>
+    </footer>
+  </section>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

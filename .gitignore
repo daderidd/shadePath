@@ -1,0 +1,9 @@
+node_modules/
+dist/
+pipeline/cache/
+*.log
+.DS_Store
+.vite/
+
+# GDAL sidecar stats
+*.aux.xml
