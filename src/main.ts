@@ -87,15 +87,18 @@ map.on("load", async () => {
   try {
     const pm = "pmtiles://" + new URL(BASE + "data/canopy.pmtiles", location.href).href;
     map.addSource("canopy", { type: "vector", url: pm });
+    // two-tone by tree height (H_MEAN, metres): low scrub light, tall crowns dark
+    const heightColor: any = ["interpolate", ["linear"], ["coalesce", ["get", "H_MEAN"], 8],
+      3, "#bfe3ad", 8, "#82c863", 15, "#46a14b", 25, "#2c7a39"];
     map.addLayer({
       id: "canopy-fill", type: "fill", source: "canopy", "source-layer": "canopy",
       layout: { visibility: "none" },
-      paint: { "fill-color": "#69b86a", "fill-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0.35, 16, 0.5] },
+      paint: { "fill-color": heightColor, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0.4, 16, 0.6] },
     }, firstSymbol);
     map.addLayer({
       id: "canopy-outline", type: "line", source: "canopy", "source-layer": "canopy",
       layout: { visibility: "none" },
-      paint: { "line-color": "#3f8f48", "line-width": ["interpolate", ["linear"], ["zoom"], 13, 0.3, 16, 0.9], "line-opacity": 0.55 },
+      paint: { "line-color": "#2c7a39", "line-width": ["interpolate", ["linear"], ["zoom"], 13, 0.3, 16, 0.9], "line-opacity": 0.5 },
     }, firstSymbol);
   } catch (e) { console.warn("canopy vector not available", e); }
 
@@ -252,6 +255,47 @@ function clearLines() {
 }
 function clearRoute() { clearLines(); $("stats").classList.add("hidden"); $("hero").classList.add("hidden"); }
 
+// ---------- nearest cool spot (route to the closest drinking fountain) ----------
+function getGeo(): Promise<[number, number] | null> {
+  return new Promise((res) => {
+    if (!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => res([p.coords.longitude, p.coords.latitude]),
+      () => res(null),
+      { enableHighAccuracy: true, timeout: 7000, maximumAge: 60000 });
+  });
+}
+async function nearestCoolSpot() {
+  if (!state.meta || !mapReady || !fountainData.length) return;
+  if (state.trip === "loop") setTrip("ab"); // route A -> fountain, not a loop
+  let origin = state.a;
+  if (!origin) {
+    $("msg").textContent = t("msg_locating");
+    origin = await getGeo();
+    $("msg").textContent = "";
+  }
+  if (!origin) origin = [map.getCenter().lng, map.getCenter().lat];
+  const mPL = state.meta.mPerLng, mPLa = state.meta.mPerLat;
+  const pick = (drinkOnly: boolean) => {
+    let best: any = null, bd = Infinity;
+    for (const f of fountainData) {
+      if (drinkOnly && f.properties.t !== "d") continue;
+      const [fx, fy] = f.geometry.coordinates;
+      const dx = (fx - origin![0]) * mPL, dy = (fy - origin![1]) * mPLa, d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = f; }
+    }
+    return best;
+  };
+  const f = pick(true) || pick(false);
+  if (!f) { $("msg").textContent = t("msg_no_water"); return; }
+  setEndpoint("a", origin, t("pin_you"));
+  setEndpoint("b", f.geometry.coordinates.slice() as [number, number], t("pin_water"));
+  new maplibregl.Popup({ offset: 12, closeButton: false, className: "foun-pop" })
+    .setLngLat(f.geometry.coordinates.slice())
+    .setHTML(`<b>${f.properties.t === "d" ? t("foun_drink") : t("foun_feat")}</b>`)
+    .addTo(map);
+}
+
 // ---------- live conditions (honest framing for the heat pattern) ----------
 async function fetchWeather() {
   try {
@@ -343,6 +387,7 @@ $("trip-loop").onclick = () => setTrip("loop");
   $("loop-dist-val").textContent = (e.target as HTMLInputElement).value + " km";
 });
 $("loop-go").onclick = () => generateLoop();
+$("coolspot").onclick = () => nearestCoolSpot();
 
 let slideT: number | undefined;
 ($("cool") as HTMLInputElement).addEventListener("input", (e) => {

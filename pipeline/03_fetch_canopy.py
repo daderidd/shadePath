@@ -18,7 +18,7 @@ PAGE = 4000
 def fetch_page(offset):
     params = {
         "where": "1=1",
-        "outFields": "OBJECTID",
+        "outFields": "OBJECTID,H_MEAN",   # H_MEAN drives the two-tone height styling
         "returnGeometry": "true",
         "outSR": "2056",
         "orderByFields": "OBJECTID",

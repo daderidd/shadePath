@@ -79,6 +79,14 @@ html, body { margin: 0; height: 100%; background: var(--bg); }
 .loop-go:active { transform: translateY(1px); }
 .loop-go:disabled { opacity: .6; cursor: default; }
 
+.coolspot {
+  width: 100%; margin-bottom: 10px; border: 1px solid rgba(47,158,216,.35); cursor: pointer;
+  background: rgba(47,158,216,.10); color: #1c6f9c; border-radius: 11px; padding: 9px;
+  font-size: 13.5px; font-weight: 700;
+}
+.coolspot:hover { background: rgba(47,158,216,.18); }
+.coolspot:active { transform: translateY(1px); }
+
 .field { margin-bottom: 8px; }
 .field > label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .search { position: relative; display: flex; align-items: center; margin-top: 3px; }

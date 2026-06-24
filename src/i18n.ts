@@ -59,6 +59,11 @@ const D: Record<string, Entry> = {
   pin_start: { fr: "📍 départ", en: "📍 start" },
   foun_drink: { fr: "💧 Eau potable", en: "💧 Drinking water" },
   foun_feat: { fr: "⛲ Fontaine / point d'eau", en: "⛲ Water feature" },
+  btn_coolspot: { fr: "💧 Fraîcheur la plus proche", en: "💧 Nearest cool spot" },
+  pin_you: { fr: "📍 vous", en: "📍 you" },
+  pin_water: { fr: "💧 point d'eau", en: "💧 water" },
+  msg_locating: { fr: "Localisation…", en: "Locating…" },
+  msg_no_water: { fr: "Aucun point d'eau à proximité.", en: "No water point nearby." },
 };
 
 let lang: Lang = (typeof localStorage !== "undefined" && (localStorage.getItem("lang") as Lang)) || "fr";
