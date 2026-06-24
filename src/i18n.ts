@@ -60,6 +60,7 @@ const D: Record<string, Entry> = {
   foun_drink: { fr: "💧 Eau potable", en: "💧 Drinking water" },
   foun_feat: { fr: "⛲ Fontaine / point d'eau", en: "⛲ Water feature" },
   btn_coolspot: { fr: "💧 Fraîcheur la plus proche", en: "💧 Nearest cool spot" },
+  btn_gpx: { fr: "⬇ Exporter en GPX", en: "⬇ Export GPX" },
   pin_you: { fr: "📍 vous", en: "📍 you" },
   pin_water: { fr: "💧 point d'eau", en: "💧 water" },
   msg_locating: { fr: "Localisation…", en: "Locating…" },

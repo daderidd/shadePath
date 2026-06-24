@@ -87,6 +87,14 @@ html, body { margin: 0; height: 100%; background: var(--bg); }
 .coolspot:hover { background: rgba(47,158,216,.18); }
 .coolspot:active { transform: translateY(1px); }
 
+.gpx {
+  width: 100%; margin-bottom: 8px; border: 1px solid var(--line); cursor: pointer;
+  background: #fff; color: var(--ink); border-radius: 11px; padding: 9px;
+  font-size: 13px; font-weight: 700;
+}
+.gpx:hover { background: rgba(0,0,0,.04); }
+.gpx:active { transform: translateY(1px); }
+
 .field { margin-bottom: 8px; }
 .field > label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .search { position: relative; display: flex; align-items: center; margin-top: 3px; }

@@ -212,6 +212,7 @@ function drawRoute(chosen: RouteResult, fastest: RouteResult, isLoop = false) {
 function updateStats(c: RouteResult, f: RouteResult, isLoop = false) {
   lastResult = { c, f, isLoop };
   $("stats").classList.remove("hidden");
+  $("gpx").classList.remove("hidden");
   $("st-dist").textContent = c.distance >= 1000 ? (c.distance / 1000).toFixed(1) + " km" : Math.round(c.distance) + " m";
   $("st-time").textContent = Math.max(1, Math.round(c.seconds / 60)) + " min";
   // Relative heat EXPOSURE (where the route sits in the heat pattern) — not a fake
@@ -249,11 +250,32 @@ function updateStats(c: RouteResult, f: RouteResult, isLoop = false) {
   } else { hero.classList.add("hidden"); }
 }
 
+function downloadGPX() {
+  if (!lastResult) return;
+  const coords = lastResult.c.coords;
+  const isLoop = lastResult.isLoop;
+  const name = `shadePath ${isLoop ? "loop" : "route"} (${state.mode})`;
+  const pts = coords.map((c) => `<trkpt lat="${c[1].toFixed(6)}" lon="${c[0].toFixed(6)}"/>`).join("\n");
+  const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="shadePath" xmlns="http://www.topografix.com/GPX/1/1">
+<metadata><name>${name}</name><time>${new Date().toISOString()}</time></metadata>
+<trk><name>${name}</name><trkseg>
+${pts}
+</trkseg></trk>
+</gpx>`;
+  const url = URL.createObjectURL(new Blob([gpx], { type: "application/gpx+xml" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `shadepath-${isLoop ? "loop" : "route"}-${state.mode}.gpx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function clearLines() {
   (map.getSource("route") as maplibregl.GeoJSONSource)?.setData(fc([]));
   (map.getSource("fastest") as maplibregl.GeoJSONSource)?.setData(fc([]));
 }
-function clearRoute() { clearLines(); $("stats").classList.add("hidden"); $("hero").classList.add("hidden"); }
+function clearRoute() { clearLines(); $("stats").classList.add("hidden"); $("hero").classList.add("hidden"); $("gpx").classList.add("hidden"); }
 
 // ---------- nearest cool spot (route to the closest drinking fountain) ----------
 function getGeo(): Promise<[number, number] | null> {
@@ -371,15 +393,16 @@ function updateLoopMax() {
   if (+el.value > max) { el.value = String(max); }
   $("loop-dist-val").textContent = el.value + " km";
 }
-function setTrip(t: Trip) {
-  state.trip = t;
-  $("trip-ab").classList.toggle("active", t === "ab");
-  $("trip-loop").classList.toggle("active", t === "loop");
-  $("pp-fields").classList.toggle("hidden", t === "loop");
-  $("loop-ctrl").classList.toggle("hidden", t !== "loop");
-  $("from-label").textContent = t === "loop" ? "Start / finish" : "From";
+function setTrip(trip: Trip) {
+  state.trip = trip;
+  $("trip-ab").classList.toggle("active", trip === "ab");
+  $("trip-loop").classList.toggle("active", trip === "loop");
+  $("pp-fields").classList.toggle("hidden", trip === "loop");
+  $("loop-ctrl").classList.toggle("hidden", trip !== "loop");
+  $("slider-wrap").classList.toggle("hidden", trip === "loop"); // loops always maximise shade
+  $("from-label").textContent = trip === "loop" ? t("lbl_from_loop") : t("lbl_from");
   clearRoute(); clearLines();
-  if (t === "ab") maybeRoute();
+  if (trip === "ab") maybeRoute();
 }
 $("trip-ab").onclick = () => setTrip("ab");
 $("trip-loop").onclick = () => setTrip("loop");
@@ -388,6 +411,7 @@ $("trip-loop").onclick = () => setTrip("loop");
 });
 $("loop-go").onclick = () => generateLoop();
 $("coolspot").onclick = () => nearestCoolSpot();
+$("gpx").onclick = () => downloadGPX();
 
 let slideT: number | undefined;
 ($("cool") as HTMLInputElement).addEventListener("input", (e) => {
