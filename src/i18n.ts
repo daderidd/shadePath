@@ -35,6 +35,10 @@ const D: Record<string, Entry> = {
     fr: 'Un prototype <a href="https://www.giraph.org" target="_blank" rel="noopener">GIRAPH</a>. Chaleur &amp; canopée : <a href="https://sitg.ge.ch" target="_blank" rel="noopener">SITG</a> (PET 2020 / canopée 2023, indicatif). Température : <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. Carte &amp; réseau : © <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.',
     en: 'A <a href="https://www.giraph.org" target="_blank" rel="noopener">GIRAPH</a> prototype. Heat &amp; canopy: <a href="https://sitg.ge.ch" target="_blank" rel="noopener">SITG</a> (PET 2020 / canopy 2023, indicative). Temperature: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. Map &amp; network: © <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.',
   },
+  disclaimer: {
+    fr: "Prototype à titre indicatif : l'itinéraire « frais » est une estimation relative, sans garantie d'exactitude, de confort ni de sécurité, et ne remplace pas les recommandations officielles en cas de canicule.",
+    en: "Indicative prototype: the « cool » route is a relative estimate, with no guarantee of accuracy, comfort or safety, and is not a substitute for official heatwave guidance.",
+  },
   // dynamic
   lvl_low: { fr: "Faible", en: "Low" },
   lvl_mod: { fr: "Modérée", en: "Moderate" },

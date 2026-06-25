@@ -156,6 +156,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); }
 .credit a { color: var(--cool); }
 .caveat { display: block; margin-bottom: 6px; color: var(--ink); opacity: .72; }
 .caveat b { opacity: 1; }
+.disclaimer { display: block; margin-top: 7px; color: var(--muted); font-size: 9.5px; line-height: 1.5; font-style: italic; }
 
 .hidden { display: none !important; }
 
