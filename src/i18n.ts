@@ -27,6 +27,8 @@ const D: Record<string, Entry> = {
   ly_fount: { fr: "💧 Fontaines", en: "💧 Fountains" },
   legend_title: { fr: "Chaleur à 14h", en: "Heat at 2pm" },
   legend_scale: { fr: "frais · chaud", en: "cooler · hotter" },
+  legend_cool: { fr: "frais", en: "cooler" },
+  legend_hot: { fr: "chaud", en: "hotter" },
   caveat: {
     fr: "La chaleur montre le <b>motif</b> modélisé un après-midi chaud (où sont les îlots) — pas la température actuelle. La valeur du jour est indiquée en haut.",
     en: "Heat shows the modelled <b>pattern</b> on a hot afternoon (where the islands are) — not live temperature. Today's reading is shown up top.",

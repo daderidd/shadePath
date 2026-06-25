@@ -364,9 +364,7 @@ function petRamp(): any {
     lo, "#2aa7c9", lo + (mid - lo) / 2, "#5cc9a6", mid, "#f4b740", mid + (hi - mid) / 2, "#ee7b34", hi, "#e23b2e"];
 }
 function updateLegend() {
-  const lo = state.meta?.petLo ?? 30, hi = state.meta?.petHi ?? 42;
-  $("legend-lo").textContent = Math.round(lo) + "°";
-  $("legend-hi").textContent = Math.round(hi) + "°";
+  /* legend uses fixed frais/chaud end labels now, no numeric °C values */
 }
 function fitTo(coords: [number, number][]) {
   const b = new maplibregl.LngLatBounds(coords[0], coords[0]);

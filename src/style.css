@@ -177,7 +177,6 @@ html, body { margin: 0; height: 100%; background: var(--bg); }
 .legend-bar { height: 9px; border-radius: 5px; margin: 6px 0 3px;
   background: linear-gradient(90deg, #2aa7c9, #5cc9a6, #f4b740, #ee7b34, #e23b2e); }
 .legend-scale { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); }
-.legend-scale span:nth-child(2) { font-size: 9.5px; opacity: .8; }
 @media (max-width: 560px) { #legend { bottom: auto; top: 16px; left: 16px; width: 150px; } }
 
 /* spinner while routing */
