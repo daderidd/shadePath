@@ -16,7 +16,7 @@ const BASE = new URL(import.meta.env.BASE_URL, location.href).href;
 type Mode = "bike" | "walk";
 type Trip = "ab" | "loop";
 interface State { mode: Mode; trip: Trip; s: number; a: [number, number] | null; b: [number, number] | null; meta: Meta | null; }
-const state: State = { mode: "bike", trip: "ab", s: 0.65, a: null, b: null, meta: null };
+const state: State = { mode: "walk", trip: "ab", s: 0.65, a: null, b: null, meta: null };
 let loopSeed = 1;
 let lastResult: { c: RouteResult; f: RouteResult; isLoop: boolean } | null = null;
 let lastWeather: { now: number; max: number } | null = null;
@@ -478,7 +478,7 @@ function syncUrl() {
 // placed later (on map load); here we only populate state + the slider/mode UI.
 function parseUrlIntoState() {
   const p = new URLSearchParams(location.search);
-  setModeUI(p.get("m") === "walk" ? "walk" : "bike");
+  setModeUI(p.get("m") === "bike" ? "bike" : "walk");
   if (p.get("s")) {
     state.s = Math.min(1, Math.max(0, parseInt(p.get("s")!, 10) / 100));
     ($("cool") as HTMLInputElement).value = String(Math.round(state.s * 100));
