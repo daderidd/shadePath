@@ -32,8 +32,8 @@ const D: Record<string, Entry> = {
     en: "Heat shows the modelled <b>pattern</b> on a hot afternoon (where the islands are) — not live temperature. Today's reading is shown up top.",
   },
   credit: {
-    fr: 'Chaleur &amp; canopée : <a href="https://sitg.ge.ch" target="_blank" rel="noopener">SITG</a> (PET 2020 / canopée 2023, indicatif). Température : <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. Carte &amp; réseau : © <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>. Sans serveur · sans pistage.',
-    en: 'Heat &amp; canopy: <a href="https://sitg.ge.ch" target="_blank" rel="noopener">SITG</a> (PET 2020 / canopy 2023, indicative). Temperature: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. Map &amp; network: © <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>. No server · no tracking.',
+    fr: 'Chaleur &amp; canopée : <a href="https://sitg.ge.ch" target="_blank" rel="noopener">SITG</a> (PET 2020 / canopée 2023, indicatif). Température : <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. Carte &amp; réseau : © <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.',
+    en: 'Heat &amp; canopy: <a href="https://sitg.ge.ch" target="_blank" rel="noopener">SITG</a> (PET 2020 / canopy 2023, indicative). Temperature: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. Map &amp; network: © <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.',
   },
   // dynamic
   lvl_low: { fr: "Faible", en: "Low" },
