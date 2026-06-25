@@ -33,7 +33,9 @@ html, body { margin: 0; height: 100%; background: var(--bg); }
   box-shadow: var(--shadow);
   padding: 16px 16px 12px;
   color: var(--ink);
-  max-height: calc(100vh - 32px);
+  /* leave room at the bottom-left for the heat legend so a tall panel
+     (e.g. with the disclaimer) never covers it; footer just scrolls */
+  max-height: calc(100vh - 112px);
   overflow-y: auto;
 }
 
