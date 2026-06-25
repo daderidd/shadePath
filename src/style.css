@@ -191,10 +191,32 @@ html, body { margin: 0; height: 100%; background: var(--bg); }
 .mk.a { background: var(--cool); }
 .mk.b { background: var(--hot); }
 
-/* mobile: dock the panel to the bottom */
+/* collapsible bottom-sheet handle (mobile only) */
+.sheet-handle { display: none; }
+
+/* mobile: dock the panel to the bottom as a collapsible sheet */
 @media (max-width: 560px) {
   #panel {
     top: auto; bottom: 0; left: 0; width: 100%; max-width: 100%;
-    border-radius: 20px 20px 0 0; max-height: 72vh; padding-bottom: 20px;
+    border-radius: 18px 18px 0 0; max-height: 66vh; padding: 6px 14px 16px;
+    transition: transform .28s ease;
   }
+  #panel.collapsed { transform: translateY(calc(100% - 58px)); }
+  .sheet-handle {
+    display: block; width: 100%; height: 22px; border: 0; background: transparent;
+    cursor: pointer; position: relative; margin-bottom: 2px;
+  }
+  .sheet-handle::before {
+    content: ""; position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
+    width: 44px; height: 5px; border-radius: 3px; background: rgba(0, 0, 0, .22);
+  }
+  .lang { top: 9px; right: 12px; }
+  /* tighten vertical rhythm so the essentials fit without covering the map */
+  .brand h1 { font-size: 21px; }
+  .tag { margin: 1px 0 6px; }
+  .conditions { margin-bottom: 8px; }
+  .modes, .trip { margin-bottom: 8px; }
+  .field { margin-bottom: 6px; }
+  .slider-wrap { margin: 4px 0 10px; }
+  .credit { font-size: 10px; }
 }

@@ -412,6 +412,7 @@ $("trip-loop").onclick = () => setTrip("loop");
 $("loop-go").onclick = () => generateLoop();
 $("coolspot").onclick = () => nearestCoolSpot();
 $("gpx").onclick = () => downloadGPX();
+$("sheet-handle").onclick = () => $("panel").classList.toggle("collapsed");
 
 let slideT: number | undefined;
 ($("cool") as HTMLInputElement).addEventListener("input", (e) => {

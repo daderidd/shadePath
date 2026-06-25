@@ -7,3 +7,6 @@ pipeline/cache/
 
 # GDAL sidecar stats
 *.aux.xml
+
+# marketing assets (not part of the app)
+media/
