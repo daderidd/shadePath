@@ -18,6 +18,7 @@
 
   <section id="panel" aria-label="Contrôles d'itinéraire">
     <button id="sheet-handle" class="sheet-handle" aria-label="Réduire / agrandir le panneau"></button>
+    <button id="panel-toggle" class="panel-toggle" aria-label="Réduire le panneau" title="Réduire">‹</button>
     <div class="lang" role="tablist" aria-label="Language">
       <button id="lang-fr" class="lang-btn active">FR</button>
       <button id="lang-en" class="lang-btn">EN</button>
@@ -29,6 +30,7 @@
       <div id="conditions" class="conditions hidden"></div>
     </header>
 
+    <div id="panel-body">
     <div class="modes" role="tablist" aria-label="Mode">
       <button id="mode-walk" class="mode active" role="tab" data-i18n="mode_walk">🚶 Marche</button>
       <button id="mode-bike" class="mode" role="tab" data-i18n="mode_bike">🚲 Vélo</button>
@@ -36,7 +38,7 @@
 
     <div class="trip" role="tablist" aria-label="Type de trajet">
       <button id="trip-ab" class="trip-btn active" role="tab" data-i18n="trip_ab">A → B</button>
-      <button id="trip-loop" class="trip-btn" role="tab" data-i18n="trip_loop">⟳ Boucle ombragée</button>
+      <button id="trip-loop" class="trip-btn" role="tab" data-i18n="trip_loop">⟳ Boucle</button>
     </div>
 
     <div class="field">
@@ -60,12 +62,22 @@
     <div id="loop-ctrl" class="loop-ctrl hidden">
       <div class="slider-labels"><span data-i18n="loop_dist">Distance de la boucle</span><span id="loop-dist-val">10 km</span></div>
       <input id="loop-dist" type="range" min="5" max="45" step="1" value="10" />
-      <button id="loop-go" class="loop-go" data-i18n="loop_go">⟳ Trouver la boucle la plus ombragée</button>
+      <button id="loop-go" class="loop-go" data-i18n="loop_go">⟳ Trouver la boucle la plus fraîche</button>
     </div>
 
     <div id="slider-wrap" class="slider-wrap">
       <div class="slider-labels"><span data-i18n="sl_fast">⚡ Rapide</span><span data-i18n="sl_cool">Frais 🌳</span></div>
       <input id="cool" type="range" min="0" max="100" value="65" />
+    </div>
+
+    <div id="time-ctrl" class="time-ctrl">
+      <div class="slider-labels"><span data-i18n="time_label">Heure &amp; date</span><span id="sun-ind" class="sun-ind">–</span></div>
+      <div class="time-row">
+        <input id="t-hour" type="range" min="5" max="22" step="1" value="14" />
+        <span id="t-hourval" class="t-hourval">14h</span>
+        <input id="t-date" type="date" class="t-date" />
+        <button id="t-now" class="t-now" data-i18n="time_now">maintenant</button>
+      </div>
     </div>
 
     <button id="coolspot" class="coolspot" data-i18n="btn_coolspot">💧 Fraîcheur la plus proche</button>
@@ -92,7 +104,10 @@
       <span data-i18n-html="credit"></span>
       <span class="disclaimer" data-i18n="disclaimer"></span>
     </footer>
+    </div>
   </section>
+
+  <div id="profile" class="profile hidden" aria-hidden="true"></div>
 
   <script type="module" src="/src/main.ts"></script>
 

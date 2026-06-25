@@ -8,6 +8,7 @@ import { geocode, Place } from "./geocode";
 import { t, getLang, setLang } from "./i18n";
 import type { Meta } from "./routing/graph";
 import type { RouteResult } from "./routing/worker";
+import { sunForGeneva, genevaNow } from "./routing/sun";
 
 // Absolute base so fetches resolve against the PAGE (not the worker script's /assets/
 // path) — required for GitHub Pages project subpaths like /shadePath/.
@@ -15,11 +16,13 @@ const BASE = new URL(import.meta.env.BASE_URL, location.href).href;
 
 type Mode = "bike" | "walk";
 type Trip = "ab" | "loop";
-interface State { mode: Mode; trip: Trip; s: number; a: [number, number] | null; b: [number, number] | null; meta: Meta | null; }
-const state: State = { mode: "walk", trip: "ab", s: 0.65, a: null, b: null, meta: null };
+interface TimeSel { y: number; m: number; d: number; h: number; }
+interface State { mode: Mode; trip: Trip; s: number; a: [number, number] | null; b: [number, number] | null; meta: Meta | null; time: TimeSel; timeNow: boolean; }
+const state: State = { mode: "walk", trip: "ab", s: 0.65, a: null, b: null, meta: null, time: genevaNow(), timeNow: true };
 let loopSeed = 1;
+let shadeReady = false;
 let lastResult: { c: RouteResult; f: RouteResult; isLoop: boolean } | null = null;
-let lastWeather: { now: number; max: number } | null = null;
+let lastWeather: { now: number; max: number; hours: number[] } | null = null;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -36,21 +39,32 @@ worker.onmessage = (ev) => {
       map.setPaintProperty("route-glow", "line-color", petRamp());
     }
     updateLegend();
+    updateTimeUI();
     maybeRoute();
+    if (m.meta.shadeTime) worker.postMessage({ type: "loadShade", base: BASE });
   }
+  else if (m.type === "shadeReady") { shadeReady = true; updateTimeUI(); if (state.trip === "ab") maybeRoute(); }
+  else if (m.type === "shadeError") { console.warn("[shade]", m.error); }
   else if (m.type === "error") { console.error("[worker] init error:", m.error); $("msg").textContent = t("msg_load_fail"); }
   else if (m.type === "route") { const cb = pending.get(m.reqId); if (cb) { pending.delete(m.reqId); cb(m); } }
 };
 worker.onerror = (e) => console.error("[worker] onerror:", e.message, e.filename, e.lineno);
 worker.postMessage({ type: "init", base: BASE });
 
+// Time-bin selector for the worker: declination + local hour of the chosen time.
+// undefined until the shade sidecar is loaded -> worker falls back to static canopy.
+function currentBinSel(): { decl: number; hour: number } | undefined {
+  if (!shadeReady || !state.meta?.shadeTime) return undefined;
+  const { y, m, d, h } = state.time;
+  return { decl: sunForGeneva(y, m, d, h).decl, hour: h };
+}
 function route(a: [number, number], b: [number, number], mode: Mode, s: number): Promise<any> {
   const id = ++reqId;
-  return new Promise((res) => { pending.set(id, res); worker.postMessage({ type: "route", reqId: id, a, b, mode: mode === "walk" ? "foot" : "bike", s }); });
+  return new Promise((res) => { pending.set(id, res); worker.postMessage({ type: "route", reqId: id, a, b, mode: mode === "walk" ? "foot" : "bike", s, binSel: currentBinSel() }); });
 }
 function loopRoute(start: [number, number], targetM: number, mode: Mode, s: number, seed: number): Promise<any> {
   const id = ++reqId;
-  return new Promise((res) => { pending.set(id, res); worker.postMessage({ type: "loop", reqId: id, start, targetM, mode: mode === "walk" ? "foot" : "bike", s, seed }); });
+  return new Promise((res) => { pending.set(id, res); worker.postMessage({ type: "loop", reqId: id, start, targetM, mode: mode === "walk" ? "foot" : "bike", s, seed, binSel: currentBinSel() }); });
 }
 
 // ---------- map ----------
@@ -207,6 +221,78 @@ function drawRoute(chosen: RouteResult, fastest: RouteResult, isLoop = false) {
   updateStats(chosen, fastest, isLoop);
   markNearFountains(chosen.coords);
   fitTo(chosen.coords);
+  renderProfile(chosen);
+}
+
+// ---------- thermal profile ribbon ("Profil thermique") ----------
+let scrubMk: maplibregl.Marker | null = null;
+function showScrub(ll: [number, number]) {
+  if (!scrubMk) { const d = document.createElement("div"); d.className = "scrub-dot"; scrubMk = new maplibregl.Marker({ element: d }).setLngLat(ll).addTo(map); }
+  else { scrubMk.setLngLat(ll); (scrubMk.getElement() as HTMLElement).style.display = "block"; }
+}
+function hideScrub() { if (scrubMk) (scrubMk.getElement() as HTMLElement).style.display = "none"; }
+function segLen(p: [number, number], q: [number, number]) {
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (q[1] - p[1]) * r, dLng = (q[0] - p[0]) * r, la1 = p[1] * r, la2 = q[1] * r;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+function petColor(pet: number, lo: number, hi: number) {
+  const t = Math.max(0, Math.min(1, (pet - lo) / (hi - lo)));
+  const stops: [number, number[]][] = [[0, [42, 167, 201]], [.25, [92, 201, 166]], [.5, [244, 183, 64]], [.75, [238, 123, 52]], [1, [226, 59, 46]]];
+  let a = stops[0], b = stops[stops.length - 1];
+  for (let i = 0; i < stops.length - 1; i++) if (t >= stops[i][0] && t <= stops[i + 1][0]) { a = stops[i]; b = stops[i + 1]; break; }
+  const f = b[0] === a[0] ? 0 : (t - a[0]) / (b[0] - a[0]);
+  const ch = (k: number) => Math.round(a[1][k] + (b[1][k] - a[1][k]) * f);
+  return `rgb(${ch(0)},${ch(1)},${ch(2)})`;
+}
+function renderProfile(chosen: RouteResult) {
+  const m = state.meta, coords = chosen.coords, el = $("profile");
+  if (!m || coords.length < 2) { el.classList.add("hidden"); return; }
+  const lo = m.petLo, hi = m.petHi;
+  const segShade = chosen.segShade ?? [], hasShade = segShade.length > 0;
+  const cum = [0];
+  for (let i = 0; i < coords.length - 1; i++) cum.push(cum[i] + segLen(coords[i], coords[i + 1]));
+  const total = cum[cum.length - 1] || 1;
+  const N = 80, pet: number[] = [], shd: number[] = [];
+  let j = 0;
+  for (let k = 0; k <= N; k++) { const d = (k / N) * total; while (j < cum.length - 2 && cum[j + 1] < d) j++; pet.push(chosen.segPet[Math.min(j, chosen.segPet.length - 1)]); shd.push(hasShade ? segShade[Math.min(j, segShade.length - 1)] : 0); }
+  const sm = (a: number[]) => a.map((v, i) => ((a[i - 1] ?? v) + v + (a[i + 1] ?? v)) / 3);
+  const petNorm = pet.map((p) => Math.max(0, Math.min(1, (p - lo) / (hi - lo))));
+  const comfort = sm(petNorm.map((v) => 1 - v));  // PET ribbon: fat where cool, thin where hot
+  const shade = sm(shd.map((v) => Math.max(0, Math.min(1, v))));
+  const cool = sm(petNorm.map((pn, i) => 1 - (m.wHeat * pn + m.wShade * (1 - (shd[i] || 0)))));
+  el.classList.remove("hidden");
+  const W = Math.max(220, (el.clientWidth || 320) - 28);
+  const lerpc = (a: number[], b: number[], tt: number) => `rgb(${Math.round(a[0] + (b[0] - a[0]) * tt)},${Math.round(a[1] + (b[1] - a[1]) * tt)},${Math.round(a[2] + (b[2] - a[2]) * tt)})`;
+  const green = (k: number) => lerpc([214, 234, 205], [38, 110, 52], shade[k]);
+  const comp = (k: number) => lerpc([201, 96, 64], [31, 158, 143], cool[k]);
+  const ribbon = (mag: number[], fill: (k: number) => string, accent: string, fid: string, H = 28) => {
+    const mid = H / 2, maxR = H / 2 - 1, xs = (k: number) => (k / N) * W;
+    let c = "";
+    for (let k = 0; k <= N; k++) { const r = (1 + Math.max(0, Math.min(1, mag[k])) * (maxR - 1)).toFixed(1); c += `<circle cx="${xs(k).toFixed(1)}" cy="${mid}" r="${r}" fill="${fill(k)}"/>`; }
+    return `<svg class="pf-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs><filter id="${fid}" x="-2%" y="-40%" width="104%" height="180%"><feGaussianBlur stdDeviation="0.9"/></filter></defs><line x1="2" y1="${mid}" x2="${(W - 2).toFixed(1)}" y2="${mid}" stroke="${accent}" stroke-width="1.2" stroke-opacity="0.4" stroke-linecap="round"/><g filter="url(#${fid})" fill-opacity="0.4">${c}</g></svg>`;
+  };
+  const mk = (icon: string, label: string, accent: string, svg: string) => `<div class="pf-row"><span class="pf-rl" style="color:${accent}">${icon} ${label}</span>${svg}</div>`;
+  let rows = mk("🌡️", t("pf_heat"), "#d97b3f", ribbon(comfort, (k) => petColor(pet[k], lo, hi), "#d97b3f", "pffP"));
+  const shadeLabel = shadeReady ? t("pf_shade_time", state.time.h) : t("pf_shade");
+  if (hasShade) rows += mk("🌳", shadeLabel, "#2c7a39", ribbon(shade, green, "#2c7a39", "pffS")) + mk("⚖️", t("pf_score"), "#1f9e8f", ribbon(cool, comp, "#1f9e8f", "pffC"));
+  el.innerHTML = `<div class="pf-title">${t("pf_title")} <span>· ${t("pf_sub")}</span></div><div class="pf-rows">${rows}<div class="pf-cursor"></div><div class="pf-tip"></div></div><div class="pf-ends"><span>${t("lbl_from")}</span><span>${t("lbl_to")}</span></div>`;
+  const rowsEl = el.querySelector(".pf-rows") as HTMLElement, cursor = el.querySelector(".pf-cursor") as HTMLElement, tip = el.querySelector(".pf-tip") as HTMLElement;
+  const move = (cx: number) => {
+    const r = rowsEl.getBoundingClientRect(); let f = (cx - r.left) / r.width; f = Math.max(0, Math.min(1, f));
+    const dd = f * total; let jj = 0; while (jj < cum.length - 2 && cum[jj + 1] < dd) jj++;
+    const s0 = cum[jj], s1 = cum[jj + 1], tt = s1 > s0 ? (dd - s0) / (s1 - s0) : 0, a = coords[jj], b = coords[jj + 1];
+    showScrub([a[0] + (b[0] - a[0]) * tt, a[1] + (b[1] - a[1]) * tt]);
+    cursor.style.display = "block"; cursor.style.left = f * r.width + "px";
+    const pp = chosen.segPet[Math.min(jj, chosen.segPet.length - 1)], nn = Math.max(0, Math.min(1, (pp - lo) / (hi - lo)));
+    const lvl = nn < .25 ? t("lvl_low") : nn < .5 ? t("lvl_mod") : nn < .75 ? t("lvl_high") : t("lvl_sev");
+    const sp = hasShade ? ` · 🌳 ${Math.round(segShade[Math.min(jj, segShade.length - 1)] * 100)}%` : "";
+    tip.textContent = `🌡️ ${lvl}${sp}`;
+    tip.style.display = "block"; tip.style.left = f * r.width + "px";
+  };
+  rowsEl.onpointermove = (e) => move((e as PointerEvent).clientX);
+  rowsEl.onpointerleave = () => { cursor.style.display = "none"; tip.style.display = "none"; hideScrub(); };
 }
 
 function updateStats(c: RouteResult, f: RouteResult, isLoop = false) {
@@ -224,11 +310,11 @@ function updateStats(c: RouteResult, f: RouteResult, isLoop = false) {
   const pe = $("st-pet");
   pe.textContent = lv[0]; pe.style.color = lv[1];
   pe.title = `PET ≈ ${c.avgPet.toFixed(0)}° (modelled, hot afternoon)`;
-  $("st-shade").textContent = c.shadePct.toFixed(0) + "%";
+  $("st-shade").textContent = c.canopyPct.toFixed(0) + "%";  // true tree cover (time-independent)
   const hero = $("hero");
   if (isLoop) {
     hero.classList.remove("hidden");
-    hero.innerHTML = t("hero_loop", (c.distance / 1000).toFixed(1), c.shadePct.toFixed(0));
+    hero.innerHTML = t("hero_loop", (c.distance / 1000).toFixed(1), c.canopyPct.toFixed(0));
     return;
   }
   if (state.s > 0 && f.distance > 0) {
@@ -274,6 +360,7 @@ ${pts}
 function clearLines() {
   (map.getSource("route") as maplibregl.GeoJSONSource)?.setData(fc([]));
   (map.getSource("fastest") as maplibregl.GeoJSONSource)?.setData(fc([]));
+  $("profile").classList.add("hidden"); hideScrub();
 }
 function clearRoute() { clearLines(); $("stats").classList.add("hidden"); $("hero").classList.add("hidden"); $("gpx").classList.add("hidden"); }
 
@@ -321,8 +408,8 @@ async function nearestCoolSpot() {
 // ---------- live conditions (honest framing for the heat pattern) ----------
 async function fetchWeather() {
   try {
-    const w = await (await fetch("https://api.open-meteo.com/v1/forecast?latitude=46.2&longitude=6.14&current=temperature_2m&daily=temperature_2m_max&forecast_days=1&timezone=auto")).json();
-    lastWeather = { now: Math.round(w.current.temperature_2m), max: Math.round(w.daily.temperature_2m_max[0]) };
+    const w = await (await fetch("https://api.open-meteo.com/v1/forecast?latitude=46.2&longitude=6.14&current=temperature_2m&hourly=temperature_2m&daily=temperature_2m_max&forecast_days=1&timezone=auto")).json();
+    lastWeather = { now: Math.round(w.current.temperature_2m), max: Math.round(w.daily.temperature_2m_max[0]), hours: (w.hourly?.temperature_2m || []).map((x: number) => Math.round(x)) };
     renderConditions();
   } catch { /* offline — leave hidden */ }
 }
@@ -330,7 +417,14 @@ function renderConditions() {
   if (!lastWeather) return;
   const emoji = lastWeather.max >= 30 ? "🥵" : lastWeather.max >= 24 ? "☀️" : "🌤️";
   const el = $("conditions"); el.classList.remove("hidden");
-  el.innerHTML = t("cond", emoji, lastWeather.now, lastWeather.max);
+  const gn = genevaNow();
+  const today = state.time.y === gn.y && state.time.m === gn.m && state.time.d === gn.d;
+  if (state.timeNow || !lastWeather.hours.length) {
+    el.innerHTML = t("cond", emoji, lastWeather.now, lastWeather.max);
+  } else {
+    const tH = today && lastWeather.hours[state.time.h] != null ? lastWeather.hours[state.time.h] : lastWeather.now;
+    el.innerHTML = t("cond_at", emoji, tH, state.time.h, lastWeather.max);
+  }
 }
 
 // ---------- fountains ----------
@@ -411,12 +505,34 @@ $("loop-go").onclick = () => generateLoop();
 $("coolspot").onclick = () => nearestCoolSpot();
 $("gpx").onclick = () => downloadGPX();
 $("sheet-handle").onclick = () => $("panel").classList.toggle("collapsed");
+$("panel-toggle").onclick = () => { const c = $("panel").classList.toggle("panel-collapsed"); $("panel-toggle").textContent = c ? "›" : "‹"; };
 
 let slideT: number | undefined;
 ($("cool") as HTMLInputElement).addEventListener("input", (e) => {
   state.s = parseInt((e.target as HTMLInputElement).value, 10) / 100;
   clearTimeout(slideT); slideT = window.setTimeout(maybeRoute, 60);
 });
+
+// ---------- time of day ----------
+function updateTimeUI() {
+  const { y, m, d, h } = state.time, z = (n: number) => String(n).padStart(2, "0");
+  ($("t-date") as HTMLInputElement).value = `${y}-${z(m)}-${z(d)}`;
+  ($("t-hour") as HTMLInputElement).value = String(h);
+  $("t-hourval").textContent = `${h}h`;
+  const sp = sunForGeneva(y, m, d, h);
+  const dirs = getLang() === "fr" ? ["N", "NE", "E", "SE", "S", "SO", "O", "NO"] : ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  const dir = dirs[Math.round(sp.az / 45) % 8];
+  $("sun-ind").textContent = sp.el > 0 ? `☀️ ${Math.round(sp.el)}° ${dir}` : `🌙 ${t("sun_night")}`;
+  $("t-now").classList.toggle("active", state.timeNow);
+}
+function applyTime() {
+  state.timeNow = false; updateTimeUI();
+  if (state.trip === "loop") generateLoop(); else maybeRoute();
+}
+($("t-hour") as HTMLInputElement).addEventListener("input", () => { $("t-hourval").textContent = ($("t-hour") as HTMLInputElement).value + "h"; });
+($("t-hour") as HTMLInputElement).addEventListener("change", () => { state.time = { ...state.time, h: parseInt(($("t-hour") as HTMLInputElement).value, 10) }; applyTime(); });
+($("t-date") as HTMLInputElement).addEventListener("change", () => { const v = ($("t-date") as HTMLInputElement).value; if (v) { const [y, m, d] = v.split("-").map(Number); state.time = { y, m, d, h: state.time.h }; } applyTime(); });
+$("t-now").onclick = () => { state.time = genevaNow(); state.timeNow = true; updateTimeUI(); if (state.trip === "loop") generateLoop(); else maybeRoute(); };
 
 $("swap").onclick = () => {
   const a = state.a, b = state.b;
@@ -469,6 +585,7 @@ function syncUrl() {
   p.set("m", state.mode); p.set("s", String(Math.round(state.s * 100)));
   if (state.a) p.set("a", state.a.map((x) => x.toFixed(5)).join(","));
   if (state.b) p.set("b", state.b.map((x) => x.toFixed(5)).join(","));
+  if (!state.timeNow) { const z = (n: number) => String(n).padStart(2, "0"); p.set("t", `${state.time.y}${z(state.time.m)}${z(state.time.d)}${z(state.time.h)}`); }
   history.replaceState(null, "", "?" + p.toString());
 }
 // Parse the shareable URL into state SYNCHRONOUSLY at startup, before the worker
@@ -481,6 +598,8 @@ function parseUrlIntoState() {
     state.s = Math.min(1, Math.max(0, parseInt(p.get("s")!, 10) / 100));
     ($("cool") as HTMLInputElement).value = String(Math.round(state.s * 100));
   }
+  const pt = p.get("t");
+  if (pt && /^\d{10}$/.test(pt)) { state.time = { y: +pt.slice(0, 4), m: +pt.slice(4, 6), d: +pt.slice(6, 8), h: +pt.slice(8, 10) }; state.timeNow = false; }
   const pa = p.get("a")?.split(",").map(Number);
   const pb = p.get("b")?.split(",").map(Number);
   if (pa?.length === 2 && pa.every(Number.isFinite)) state.a = [pa[0], pa[1]];
@@ -501,11 +620,13 @@ function applyLang() {
     if (inp.value.startsWith("📍")) inp.value = state.trip === "loop" && which === "a" ? t("pin_start") : t("pin_map");
   }
   renderConditions();
-  if (lastResult) updateStats(lastResult.c, lastResult.f, lastResult.isLoop);
+  updateTimeUI();
+  if (lastResult) { updateStats(lastResult.c, lastResult.f, lastResult.isLoop); renderProfile(lastResult.c); }
 }
 $("lang-fr").onclick = () => { setLang("fr"); applyLang(); };
 $("lang-en").onclick = () => { setLang("en"); applyLang(); };
 
 parseUrlIntoState();
 applyLang();
+updateTimeUI();
 fetchWeather();

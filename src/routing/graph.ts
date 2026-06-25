@@ -1,5 +1,17 @@
 // Decode the baked binary routing graph (CSR) and provide coord + spatial-snap helpers.
 
+export interface ShadeTimeMeta {
+  binFile: string;
+  edgeCount: number;
+  layout: string;          // "bin-major-u8"
+  tau: number;
+  dates: string[];
+  decl: number[];          // solar declination per date anchor (interpolation key)
+  hours: number[];         // local daylight hours
+  tz: string;
+  sun?: [number, number][]; // [az,el] per bin, for client cross-check
+}
+
 export interface Meta {
   version: number;
   dataVersion: string;
@@ -19,6 +31,7 @@ export interface Meta {
   wShade: number;
   mPerLng: number;
   mPerLat: number;
+  shadeTime?: ShadeTimeMeta;
 }
 
 export interface Graph {
@@ -29,7 +42,9 @@ export interface Graph {
   ev: Uint32Array;
   eLenDm: Uint16Array;
   ePet: Uint8Array;
-  eShade: Uint8Array;
+  eShade: Uint8Array;        // static tree-canopy fraction (always the true tree cover)
+  eShadeActive: Uint8Array;  // shade the cost function reads (= eShade until a time is chosen)
+  shadeBins: Uint8Array | null; // lazy-loaded sidecar [bins * E], bin-major; null until loaded
   eFlagsF: Uint8Array;
   eFlagsB: Uint8Array;
   csrOff: Uint32Array;
@@ -90,7 +105,8 @@ export async function loadGraph(base: string): Promise<Graph> {
   }
 
   const g: Graph = {
-    meta, nodeX, nodeY, eu, ev, eLenDm, ePet, eShade, eFlagsF, eFlagsB,
+    meta, nodeX, nodeY, eu, ev, eLenDm, ePet, eShade, eShadeActive: eShade, shadeBins: null,
+    eFlagsF, eFlagsB,
     csrOff, csrEdge, geomOff, geomX, geomY, nodeMask, grid: null as unknown as SpatialGrid,
   };
   g.grid = new SpatialGrid(g);

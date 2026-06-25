@@ -25,6 +25,8 @@ PET_IDENTIFY = ("https://raster.sitg.ge.ch/arcgis/rest/services/"
                 "CLIMAT_PET_14H00_P0_2020/MapServer/identify")
 CANOPY_QUERY = ("https://vector.sitg.ge.ch/arcgis/rest/services/"
                 "SIPV_ICA_MNC_2023/FeatureServer/0/query")
+BUILDINGS_QUERY = ("https://vector.sitg.ge.ch/arcgis/rest/services/"
+                   "CAD_BATIMENT_HORSOL/FeatureServer/0/query")  # footprints + HAUTEUR (m)
 UA = {"User-Agent": "shadePath/0.1 (heat-aware bike/walk routing for Geneva)"}
 
 

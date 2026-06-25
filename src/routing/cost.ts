@@ -17,7 +17,7 @@ export function edgeWeight(g: Graph, e: number, s: number): number {
   const m = g.meta;
   const petc = m.petMin + (g.ePet[e] / 255) * (m.petMax - m.petMin);
   const petNorm = clamp01((petc - m.petLo) / (m.petHi - m.petLo));
-  const shade = g.eShade[e] / 255;
+  const shade = g.eShadeActive[e] / 255;  // = static canopy, or time-of-day shade when selected
   const discomfort = m.wHeat * petNorm + m.wShade * (1 - shade);
   return len * (1 + m.K * s * discomfort);
 }
