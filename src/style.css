@@ -189,7 +189,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); }
 .pf-tip { position: absolute; top: -6px; transform: translate(-50%, -100%); background: var(--ink); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 7px; white-space: nowrap; display: none; pointer-events: none; }
 .pf-ends { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-top: 2px; }
 .scrub-dot { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); box-shadow: 0 2px 6px rgba(0, 0, 0, .45); }
-@media (max-width: 560px) { .profile { width: auto; left: 8px; right: 8px; bottom: 66px; transform: none; } }
+@media (max-width: 560px) { .profile { display: none !important; } }  /* ribbon dock is desktop-only for now */
 
 .layers { font-size: 13px; margin: 4px 0; border-top: 1px solid var(--line); padding-top: 8px; }
 .layers summary { cursor: pointer; color: var(--muted); font-weight: 600; }
