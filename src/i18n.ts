@@ -25,6 +25,7 @@ const D: Record<string, Entry> = {
   ly_heat: { fr: "🔥 Chaleur (PET, 14h jour chaud)", en: "🔥 Heat (PET, 2pm hot day)" },
   ly_shade: { fr: "🌳 Canopée arborée", en: "🌳 Tree canopy" },
   ly_fount: { fr: "💧 Fontaines", en: "💧 Fountains" },
+  ly_3d: { fr: "🏙️ Bâtiments 3D", en: "🏙️ 3D buildings" },
   legend_title: { fr: "Chaleur à 14h", en: "Heat at 2pm" },
   legend_scale: { fr: "frais · chaud", en: "cooler · hotter" },
   legend_cool: { fr: "frais", en: "cooler" },
