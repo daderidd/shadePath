@@ -524,6 +524,7 @@ function updateTimeUI() {
   const dir = dirs[Math.round(sp.az / 45) % 8];
   $("sun-ind").textContent = sp.el > 0 ? `☀️ ${Math.round(sp.el)}° ${dir}` : `🌙 ${t("sun_night")}`;
   $("t-now").classList.toggle("active", state.timeNow);
+  maybeSunLight(); // keep the 3D light in sync with the chosen hour
 }
 function applyTime() {
   state.timeNow = false; updateTimeUI();
@@ -545,6 +546,39 @@ function setLayer(id: string, on: boolean) { if (map.getLayer(id)) map.setLayout
 ($("ly-heat") as HTMLInputElement).onchange = (e) => { const on = (e.target as HTMLInputElement).checked; setLayer("heat", on); $("legend").classList.toggle("hidden", !on); };
 ($("ly-shade") as HTMLInputElement).onchange = (e) => { const on = (e.target as HTMLInputElement).checked; setLayer("canopy-fill", on); setLayer("canopy-outline", on); };
 ($("ly-fount") as HTMLInputElement).onchange = (e) => setLayer("fountains", (e.target as HTMLInputElement).checked);
+($("ly-3d") as HTMLInputElement).onchange = (e) => set3D((e.target as HTMLInputElement).checked);
+
+// ---------- 3D buildings (extrude OpenFreeMap heights; light follows the sun) ----------
+let buildings3dAdded = false;
+function addBuildingsLayer() {
+  const firstSymbol = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
+  map.addLayer({
+    id: "buildings3d", type: "fill-extrusion", source: "openmaptiles", "source-layer": "building", minzoom: 13,
+    filter: ["!=", ["get", "hide_3d"], true],
+    paint: {
+      "fill-extrusion-color": ["interpolate", ["linear"], ["coalesce", ["get", "render_height"], 0], 0, "#e7ddcb", 25, "#d3c7b2", 60, "#b9ab92"],
+      "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13, 0, 14.5, ["coalesce", ["get", "render_height"], 0]],
+      "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
+      "fill-extrusion-vertical-gradient": true,
+      "fill-extrusion-opacity": 0.95,
+    },
+  }, firstSymbol);
+}
+function maybeSunLight() {
+  if (!mapReady || !($("ly-3d") as HTMLInputElement)?.checked) return;
+  const { y, m, d, h } = state.time;
+  const sp = sunForGeneva(y, m, d, h);
+  const polar = Math.max(4, Math.min(86, 90 - sp.el)); // 0deg = overhead, 90deg = horizon
+  map.setLight({ anchor: "map", color: sp.el > 3 ? "#fff7ec" : "#c9d3e6", intensity: sp.el > 3 ? 0.55 : 0.25, position: [1.5, sp.az, polar] });
+}
+function set3D(on: boolean) {
+  if (on && !buildings3dAdded) { addBuildingsLayer(); buildings3dAdded = true; }
+  setLayer("buildings3d", on);
+  maybeSunLight();
+  const cam: any = { pitch: on ? 55 : 0, duration: 800, essential: true };
+  if (on && map.getZoom() < 14.5) cam.zoom = 15.5; // fly in so buildings are visible
+  map.easeTo(cam);
+}
 
 // ---------- geocode autocomplete ----------
 function wireSearch(inputId: string, sugId: string, which: "a" | "b") {
