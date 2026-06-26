@@ -567,9 +567,19 @@ function addBuildingsLayer() {
 function maybeSunLight() {
   if (!mapReady || !is3D) return;
   const { y, m, d, h } = state.time;
-  const sp = sunForGeneva(y, m, d, h);
-  const polar = Math.max(4, Math.min(86, 90 - sp.el)); // 0deg = overhead, 90deg = horizon
-  map.setLight({ anchor: "map", color: sp.el > 3 ? "#fff7ec" : "#c9d3e6", intensity: sp.el > 3 ? 0.55 : 0.25, position: [1.5, sp.az, polar] });
+  const sp = sunForGeneva(y, m, d, h); // real solar position -> already date-aware (declination = season)
+  // "Daytime-ness": keyed to the real elevation, so day -> dusk -> night follows the actual
+  // (date-dependent) sunrise/sunset. Stays ~1 while the sun is comfortably up, eases to 0 at night.
+  const day = Math.max(0, Math.min(1, (sp.el + 4) / 12));
+  // Direction = real sun azimuth, but don't let the light graze so low that rooftops go dark
+  // through the long summer evenings: clamp the lighting elevation to a readable floor.
+  const polar = Math.max(4, Math.min(82, 90 - Math.max(sp.el, 33)));
+  const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
+  const mix = (c1: number[], c2: number[], t: number) =>
+    `rgb(${lerp(c1[0], c2[0], t)},${lerp(c1[1], c2[1], t)},${lerp(c1[2], c2[2], t)})`;
+  const color = mix([150, 161, 199], [255, 247, 236], day); // dusk/night blue -> warm daylight
+  const intensity = 0.18 + 0.34 * day;                      // ~0.52 by day, ~0.18 at night
+  map.setLight({ anchor: "map", color, intensity, position: [1.5, sp.az, polar] });
 }
 function set3D(on: boolean) {
   is3D = on;
