@@ -546,9 +546,9 @@ function setLayer(id: string, on: boolean) { if (map.getLayer(id)) map.setLayout
 ($("ly-heat") as HTMLInputElement).onchange = (e) => { const on = (e.target as HTMLInputElement).checked; setLayer("heat", on); $("legend").classList.toggle("hidden", !on); };
 ($("ly-shade") as HTMLInputElement).onchange = (e) => { const on = (e.target as HTMLInputElement).checked; setLayer("canopy-fill", on); setLayer("canopy-outline", on); };
 ($("ly-fount") as HTMLInputElement).onchange = (e) => setLayer("fountains", (e.target as HTMLInputElement).checked);
-($("ly-3d") as HTMLInputElement).onchange = (e) => set3D((e.target as HTMLInputElement).checked);
 
 // ---------- 3D buildings (extrude OpenFreeMap heights; light follows the sun) ----------
+let is3D = false;
 let buildings3dAdded = false;
 function addBuildingsLayer() {
   const firstSymbol = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
@@ -565,13 +565,14 @@ function addBuildingsLayer() {
   }, firstSymbol);
 }
 function maybeSunLight() {
-  if (!mapReady || !($("ly-3d") as HTMLInputElement)?.checked) return;
+  if (!mapReady || !is3D) return;
   const { y, m, d, h } = state.time;
   const sp = sunForGeneva(y, m, d, h);
   const polar = Math.max(4, Math.min(86, 90 - sp.el)); // 0deg = overhead, 90deg = horizon
   map.setLight({ anchor: "map", color: sp.el > 3 ? "#fff7ec" : "#c9d3e6", intensity: sp.el > 3 ? 0.55 : 0.25, position: [1.5, sp.az, polar] });
 }
 function set3D(on: boolean) {
+  is3D = on;
   if (on && !buildings3dAdded) { addBuildingsLayer(); buildings3dAdded = true; }
   setLayer("buildings3d", on);
   maybeSunLight();
@@ -579,6 +580,7 @@ function set3D(on: boolean) {
   if (on && map.getZoom() < 14.5) cam.zoom = 15.5; // fly in so buildings are visible
   map.easeTo(cam);
 }
+$("view3d").onclick = () => { set3D(!is3D); $("view3d").classList.toggle("active", is3D); $("view3d").textContent = is3D ? "2D" : "3D"; };
 
 // ---------- geocode autocomplete ----------
 function wireSearch(inputId: string, sugId: string, which: "a" | "b") {
