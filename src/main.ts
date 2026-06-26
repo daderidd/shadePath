@@ -119,14 +119,18 @@ map.on("load", async () => {
   map.addSource("fastest", { type: "geojson", data: fc([]) });
   map.addSource("route", { type: "geojson", data: fc([]) });
   map.addSource("fountains", { type: "geojson", data: fc([]) });
+  map.addSource("bikepoi", { type: "geojson", data: fc([]) });
 
   map.addLayer({ id: "fastest", type: "line", source: "fastest", layout: { "line-cap": "round" }, paint: { "line-color": "#6b7a85", "line-width": 3, "line-dasharray": [1.4, 1.6], "line-opacity": 0.75 } });
   map.addLayer({ id: "route-glow", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-width": ["interpolate", ["linear"], ["zoom"], 11, 10, 16, 22], "line-color": petRamp(), "line-blur": 8, "line-opacity": 0.45 } });
   map.addLayer({ id: "route-casing", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 6, 16, 11] } });
   map.addLayer({ id: "route", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-width": ["interpolate", ["linear"], ["zoom"], 11, 3.5, 16, 7], "line-color": petRamp() } });
   map.addLayer({ id: "fountains", type: "circle", source: "fountains", paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, ["case", ["get", "near"], 4, 2], 16, ["case", ["get", "near"], 7, 4]], "circle-color": ["case", ["==", ["get", "t"], "d"], "#2f9ed8", "#7fcfc6"], "circle-stroke-color": "#fff", "circle-stroke-width": ["case", ["get", "near"], 2, 1], "circle-opacity": ["case", ["get", "near"], 1, 0.55] } });
+  map.addLayer({ id: "bikepoi", type: "circle", source: "bikepoi", layout: { visibility: "none" }, paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, ["match", ["get", "t"], "r", 4, 3], 16, ["match", ["get", "t"], "r", 7, 5]], "circle-color": ["match", ["get", "t"], "r", "#e4572e", "s", "#3a6ea5", "p", "#8bb0c9", "#888"], "circle-stroke-color": "#fff", "circle-stroke-width": 1.4, "circle-opacity": 0.92 } });
 
   loadFountains();
+  loadBikePoi();
+  setBikeLayer();
   updateLegend();
   // place markers for endpoints already parsed from the URL, then enable drawing
   if (state.a) { placeMarker("a", state.a); ($("from") as HTMLInputElement).value = t("pin_shared"); }
@@ -136,16 +140,20 @@ map.on("load", async () => {
 });
 
 map.on("click", (e) => {
-  // a tap on a fountain identifies it instead of setting a route point
-  if (map.getLayer("fountains")) {
+  // a tap on a fountain or a bike POI identifies it instead of setting a route point
+  const idLayers = ["fountains", "bikepoi"].filter((l) => map.getLayer(l));
+  if (idLayers.length) {
     const hits = map.queryRenderedFeatures(
       [[e.point.x - 9, e.point.y - 9], [e.point.x + 9, e.point.y + 9]] as any,
-      { layers: ["fountains"] });
+      { layers: idLayers });
     if (hits.length) {
       const f = hits[0] as any;
+      const html = f.layer.id === "bikepoi"
+        ? bikePoiHTML(f.properties)
+        : `<b>${f.properties.t === "d" ? t("foun_drink") : t("foun_feat")}</b>`;
       new maplibregl.Popup({ offset: 12, closeButton: false, className: "foun-pop" })
         .setLngLat(f.geometry.coordinates.slice())
-        .setHTML(`<b>${f.properties.t === "d" ? t("foun_drink") : t("foun_feat")}</b>`)
+        .setHTML(html)
         .addTo(map);
       return;
     }
@@ -159,6 +167,8 @@ map.on("click", (e) => {
 
 map.on("mouseenter", "fountains", () => { map.getCanvas().style.cursor = "pointer"; });
 map.on("mouseleave", "fountains", () => { map.getCanvas().style.cursor = ""; });
+map.on("mouseenter", "bikepoi", () => { map.getCanvas().style.cursor = "pointer"; });
+map.on("mouseleave", "bikepoi", () => { map.getCanvas().style.cursor = ""; });
 
 // ---------- markers ----------
 const markers: Record<"a" | "b", maplibregl.Marker | null> = { a: null, b: null };
@@ -405,6 +415,40 @@ async function nearestCoolSpot() {
     .addTo(map);
 }
 
+// ---------- nearest bike repair (route to the closest repair station or shop) ----------
+function escHtml(s: string) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string)); }
+function bikePoiHTML(p: any): string {
+  const label = p.t === "r" ? t("poi_repair") : p.t === "s" ? t("poi_shop") : t("poi_pump");
+  return p.n ? `<b>${label}</b><br>${escHtml(p.n)}` : `<b>${label}</b>`;
+}
+async function nearestRepair() {
+  if (!state.meta || !mapReady || !bikeData.length) return;
+  if (state.trip === "loop") setTrip("ab"); // route A -> repair point, not a loop
+  let origin = state.a;
+  if (!origin) {
+    $("msg").textContent = t("msg_locating");
+    origin = await getGeo();
+    $("msg").textContent = "";
+  }
+  if (!origin) origin = [map.getCenter().lng, map.getCenter().lat];
+  const o = origin;
+  const mPL = state.meta.mPerLng, mPLa = state.meta.mPerLat;
+  let best: any = null, bd = Infinity;
+  for (const f of bikeData) {
+    if (f.properties.t !== "r" && f.properties.t !== "s") continue; // repair stations or shops
+    const [fx, fy] = f.geometry.coordinates;
+    const dx = (fx - o[0]) * mPL, dy = (fy - o[1]) * mPLa, d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = f; }
+  }
+  if (!best) { $("msg").textContent = t("msg_no_repair"); return; }
+  setEndpoint("a", o, t("pin_you"));
+  setEndpoint("b", best.geometry.coordinates.slice() as [number, number], t("pin_repair"));
+  new maplibregl.Popup({ offset: 12, closeButton: false, className: "foun-pop" })
+    .setLngLat(best.geometry.coordinates.slice())
+    .setHTML(bikePoiHTML(best.properties))
+    .addTo(map);
+}
+
 // ---------- live conditions (honest framing for the heat pattern) ----------
 async function fetchWeather() {
   try {
@@ -434,6 +478,14 @@ async function loadFountains() {
     const pts = await (await fetch(BASE + "data/fountains.json")).json();
     fountainData = pts.map((p: any) => ({ type: "Feature", properties: { t: p.t, near: false }, geometry: { type: "Point", coordinates: [p.lon, p.lat] } }));
     (map.getSource("fountains") as maplibregl.GeoJSONSource).setData(fc(fountainData));
+  } catch { /* ignore */ }
+}
+let bikeData: any[] = [];
+async function loadBikePoi() {
+  try {
+    const pts = await (await fetch(BASE + "data/bike_poi.json")).json();
+    bikeData = pts.map((p: any) => ({ type: "Feature", properties: { t: p.t, n: p.n || "" }, geometry: { type: "Point", coordinates: [p.lon, p.lat] } }));
+    (map.getSource("bikepoi") as maplibregl.GeoJSONSource).setData(fc(bikeData));
   } catch { /* ignore */ }
 }
 function markNearFountains(coords: [number, number][]) {
@@ -471,6 +523,8 @@ function setModeUI(m: Mode) {
   state.mode = m;
   $("mode-bike").classList.toggle("active", m === "bike");
   $("mode-walk").classList.toggle("active", m === "walk");
+  $("repairspot").classList.toggle("hidden", m !== "bike");
+  setBikeLayer();
   updateLoopMax();
 }
 function setMode(m: Mode) { setModeUI(m); maybeRoute(); }
@@ -503,6 +557,7 @@ $("trip-loop").onclick = () => setTrip("loop");
 });
 $("loop-go").onclick = () => generateLoop();
 $("coolspot").onclick = () => nearestCoolSpot();
+$("repairspot").onclick = () => nearestRepair();
 $("gpx").onclick = () => downloadGPX();
 $("sheet-handle").onclick = () => $("panel").classList.toggle("collapsed");
 $("panel-toggle").onclick = () => { const c = $("panel").classList.toggle("panel-collapsed"); $("panel-toggle").textContent = c ? "›" : "‹"; };
@@ -546,6 +601,12 @@ function setLayer(id: string, on: boolean) { if (map.getLayer(id)) map.setLayout
 ($("ly-heat") as HTMLInputElement).onchange = (e) => { const on = (e.target as HTMLInputElement).checked; setLayer("heat", on); $("legend").classList.toggle("hidden", !on); };
 ($("ly-shade") as HTMLInputElement).onchange = (e) => { const on = (e.target as HTMLInputElement).checked; setLayer("canopy-fill", on); setLayer("canopy-outline", on); };
 ($("ly-fount") as HTMLInputElement).onchange = (e) => setLayer("fountains", (e.target as HTMLInputElement).checked);
+function setBikeLayer() {
+  if (!map.getLayer("bikepoi")) return;
+  const on = state.mode === "bike" && ($("ly-bike") as HTMLInputElement).checked;
+  map.setLayoutProperty("bikepoi", "visibility", on ? "visible" : "none");
+}
+($("ly-bike") as HTMLInputElement).onchange = () => setBikeLayer();
 
 // ---------- 3D buildings (extrude OpenFreeMap heights; light follows the sun) ----------
 let is3D = false;

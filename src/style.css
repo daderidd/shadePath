@@ -106,6 +106,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); }
 }
 .coolspot:hover { background: rgba(47,158,216,.18); }
 .coolspot:active { transform: translateY(1px); }
+.repairspot { border-color: rgba(228,87,46,.35); background: rgba(228,87,46,.10); color: #b23c1a; }
+.repairspot:hover { background: rgba(228,87,46,.18); }
 
 .gpx {
   width: 100%; margin-bottom: 8px; border: 1px solid var(--line); cursor: pointer;
