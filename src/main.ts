@@ -524,6 +524,7 @@ function setModeUI(m: Mode) {
   $("mode-bike").classList.toggle("active", m === "bike");
   $("mode-walk").classList.toggle("active", m === "walk");
   $("repairspot").classList.toggle("hidden", m !== "bike");
+  $("ly-bike-row").classList.toggle("hidden", m !== "bike"); // bike layer toggle is bike-mode only
   setBikeLayer();
   updateLoopMax();
 }
